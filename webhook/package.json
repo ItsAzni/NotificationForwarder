@@ -1,0 +1,21 @@
+{
+  "name": "webhook-api",
+  "version": "1.0.0",
+  "description": "Webhook receiver API with bearer authentication and file logging",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "webhook",
+    "express",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.19.2"
+  }
+}
