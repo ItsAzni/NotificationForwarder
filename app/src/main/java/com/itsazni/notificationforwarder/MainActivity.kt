@@ -83,12 +83,15 @@ private enum class AppTab(val label: String, val icon: ImageVector) {
 
 private data class UiSettings(
     val webhookUrl: String,
+    val webhookMethod: String,
     val forwardingEnabled: Boolean,
     val filterMode: FilterMode,
     val filterPackagesRaw: String,
     val authMode: AuthMode,
     val bearerToken: String,
     val customHeadersRaw: String,
+    val queryParamsRaw: String,
+    val payloadTemplateRaw: String,
     val maxRetriesRaw: String,
     val batchSizeRaw: String
 )
@@ -96,12 +99,15 @@ private data class UiSettings(
 private fun AppSettings.toUiSettings(): UiSettings {
     return UiSettings(
         webhookUrl = webhookUrl,
+        webhookMethod = webhookMethod,
         forwardingEnabled = forwardingEnabled,
         filterMode = filterMode,
         filterPackagesRaw = filterPackages.joinToString("\n"),
         authMode = authMode,
         bearerToken = bearerToken,
         customHeadersRaw = customHeadersRaw,
+        queryParamsRaw = queryParamsRaw,
+        payloadTemplateRaw = payloadTemplateRaw,
         maxRetriesRaw = maxRetries.toString(),
         batchSizeRaw = batchSize.toString()
     )
@@ -179,12 +185,14 @@ private fun MainScreen(settingsStore: SettingsStore) {
                         val result = withContext(Dispatchers.IO) {
                             WebhookClient().send(
                                 url = uiSettings.webhookUrl,
-                                method = "POST",
+                                method = uiSettings.webhookMethod,
                                 headers = buildHeadersPreview(
                                     authMode = uiSettings.authMode,
                                     token = uiSettings.bearerToken,
                                     customHeadersRaw = uiSettings.customHeadersRaw
                                 ),
+                                queryParams = parseKeyValuePairs(uiSettings.queryParamsRaw),
+                                payloadTemplate = uiSettings.payloadTemplateRaw,
                                 item = QueueItem(
                                     packageName = "com.test.package",
                                     appName = "Webhook Test",
@@ -384,6 +392,15 @@ private fun WebhookScreen(
                     )
 
                     DropdownSelector(
+                        label = "HTTP method",
+                        value = uiSettings.webhookMethod,
+                        options = listOf("GET", "POST", "PUT", "PATCH"),
+                        onSelected = {
+                            onSettingsChange(uiSettings.copy(webhookMethod = it))
+                        }
+                    )
+
+                    DropdownSelector(
                         label = "Auth mode",
                         value = uiSettings.authMode.name,
                         options = AuthMode.entries.map { it.name },
@@ -408,6 +425,24 @@ private fun WebhookScreen(
                         value = uiSettings.customHeadersRaw,
                         onValueChange = { onSettingsChange(uiSettings.copy(customHeadersRaw = it)) },
                         label = { Text("Custom headers (Key: Value per line)") }
+                    )
+
+                    OutlinedTextField(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp),
+                        value = uiSettings.queryParamsRaw,
+                        onValueChange = { onSettingsChange(uiSettings.copy(queryParamsRaw = it)) },
+                        label = { Text("Query params (key=value per line)") }
+                    )
+
+                    OutlinedTextField(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        value = uiSettings.payloadTemplateRaw,
+                        onValueChange = { onSettingsChange(uiSettings.copy(payloadTemplateRaw = it)) },
+                        label = { Text("Payload template (JSON with {title} {text} etc.)") }
                     )
 
                     Button(modifier = Modifier.fillMaxWidth(), onClick = onSave) {
@@ -639,12 +674,15 @@ private fun QueueStatCard(
 
 private fun saveSettings(settingsStore: SettingsStore, uiSettings: UiSettings) {
     settingsStore.webhookUrl = uiSettings.webhookUrl
+    settingsStore.webhookMethod = uiSettings.webhookMethod
     settingsStore.forwardingEnabled = uiSettings.forwardingEnabled
     settingsStore.filterMode = uiSettings.filterMode
     settingsStore.filterPackages = SettingsStore.parsePackages(uiSettings.filterPackagesRaw)
     settingsStore.authMode = uiSettings.authMode
     settingsStore.bearerToken = uiSettings.bearerToken
     settingsStore.customHeadersRaw = uiSettings.customHeadersRaw
+    settingsStore.queryParamsRaw = uiSettings.queryParamsRaw
+    settingsStore.payloadTemplateRaw = uiSettings.payloadTemplateRaw
     settingsStore.maxRetries = uiSettings.maxRetriesRaw.toIntOrNull() ?: 10
     settingsStore.batchSize = uiSettings.batchSizeRaw.toIntOrNull() ?: 20
 }
@@ -656,6 +694,21 @@ private fun isNotificationListenerEnabled(context: Context): Boolean {
     }
     val target = ComponentName(context, com.itsazni.notificationforwarder.service.AppNotificationListenerService::class.java)
     return enabled.contains(target.flattenToString())
+}
+
+private fun parseKeyValuePairs(raw: String): Map<String, String> {
+    val map = linkedMapOf<String, String>()
+    raw.lines().forEach { line ->
+        val trimmed = line.trim()
+        if (trimmed.isEmpty()) return@forEach
+        val idx = trimmed.indexOf('=')
+        if (idx > 0) {
+            val key = trimmed.substring(0, idx).trim()
+            val value = trimmed.substring(idx + 1).trim()
+            if (key.isNotEmpty()) map[key] = value
+        }
+    }
+    return map
 }
 
 private fun buildHeadersPreview(
