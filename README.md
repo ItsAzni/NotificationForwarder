@@ -5,7 +5,8 @@ Android app to listen for incoming notifications and forward them to a configura
 ## Features
 
 - Notification capture using `NotificationListenerService`
-- Webhook forwarding with configurable URL, auth mode, and custom headers
+- Webhook forwarding with configurable URL, HTTP method, auth mode, custom headers, query params, and payload template
+- Compatible with Telegram Bot API, Discord webhooks, and any custom API
 - Queue system with Room (durable local storage)
 - Retry system with WorkManager (network constraints + backoff)
 - Background support
@@ -22,6 +23,63 @@ Android app to listen for incoming notifications and forward them to a configura
 
 ```bash
 ./gradlew assembleDebug
+```
+
+## Webhook Configuration
+
+### Supported HTTP Methods
+- `GET` — no request body, query params appended to URL
+- `POST` — with JSON body
+- `PUT` — with JSON body
+- `PATCH` — with JSON body
+
+### Authentication
+- **None** — no auth header
+- **Bearer** — adds `Authorization: Bearer <token>`
+- **Custom** — define any headers manually
+
+### Custom Query Params
+Add per line as `key=value`:
+```
+chat_id=123456789
+token=abc123
+```
+
+### Custom Payload Template
+Use JSON with variable placeholders. Leave blank for default payload.
+
+Available variables:
+- `{deviceId}`
+- `{packageName}`
+- `{appName}`
+- `{title}`
+- `{text}`
+- `{postedAt}`
+- `{notificationKey}`
+
+#### Example: Telegram Bot API
+- URL: `https://api.telegram.org/bot<token>/sendMessage`
+- Method: `POST`
+- Payload template:
+```json
+{"chat_id":"123456789","text":"*{appName}*\n*{title}*\n{text}","parse_mode":"Markdown"}
+```
+
+#### Example: Discord Webhook
+- URL: `https://discord.com/api/webhooks/.../...`
+- Method: `POST`
+- Payload template:
+```json
+{"content":"**{appName}**\n**{title}**\n{text}"}
+```
+
+#### Example: Custom GET API
+- URL: `https://example.com/api/alert`
+- Method: `GET`
+- Query params:
+```
+device={deviceId}
+msg={title}
 ```
 
 ## Local Webhook API (`webhook/`)
@@ -52,12 +110,14 @@ Health check:
 
 Environment config (`webhook/.env`):
 
-- `HOST`
-- `PORT`
-- `WEBHOOK_PATH`
-- `WEBHOOK_BEARER_TOKEN`
-- `WEBHOOK_LOG_FILE`
-- `JSON_LIMIT`
+| Key | Description |
+|-----|-------------|
+| `HOST` | Server host |
+| `PORT` | Server port |
+| `WEBHOOK_PATH` | Webhook endpoint path |
+| `WEBHOOK_BEARER_TOKEN` | Optional bearer token |
+| `WEBHOOK_LOG_FILE` | Log file path |
+| `JSON_LIMIT` | Max JSON body size |
 
 ## Screenshots
 
@@ -70,6 +130,12 @@ Environment config (`webhook/.env`):
 
 <img src="screenshots/filter.jpg" alt="Filter" width="240" />
 <img src="screenshots/queue.jpg" alt="Queue" width="240" />
+
+## Build
+
+```bash
+./gradlew clean assembleDebug
+```
 
 ## License
 

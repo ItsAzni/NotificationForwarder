@@ -36,13 +36,16 @@ class QueueWorker(
         ) ?: "unknown-device"
 
         val headers = buildHeaders(config.authMode, config.bearerToken, settings.parseHeaders())
+        val queryParams = settings.parseQueryParams()
 
         var shouldRetry = false
         items.forEach { item ->
             val result = webhookClient.send(
                 url = config.webhookUrl,
-                method = "POST",
+                method = config.webhookMethod,
                 headers = headers,
+                queryParams = queryParams,
+                payloadTemplate = config.payloadTemplateRaw,
                 item = item,
                 deviceId = deviceId
             )
