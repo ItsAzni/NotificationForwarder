@@ -131,12 +131,6 @@ Environment config (`webhook/.env`):
 <img src="screenshots/filter.jpg" alt="Filter" width="240" />
 <img src="screenshots/queue.jpg" alt="Queue" width="240" />
 
-## Build
-
-```bash
-./gradlew clean assembleDebug
-```
-
 ## License
 
 This project is licensed under the MIT License.
